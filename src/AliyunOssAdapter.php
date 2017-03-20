@@ -36,8 +36,7 @@ class AliyunOssAdapter extends AbstractAdapter
      * @param string $prefix
      * @param array $options
      */
-    public function __construct($accessKey, $secretKey, $bucket, $domain, $isCname, $prefix = null,
-                                array $options = [])
+    public function __construct($accessKey, $secretKey, $bucket, $domain, $isCname, $prefix = null, array $options = [])
     {
         $this->accessKey = $accessKey;
         $this->secretKey = $secretKey;
@@ -71,7 +70,7 @@ class AliyunOssAdapter extends AbstractAdapter
         } catch (OssException $e) {
             return false;
         }
-        return $this->normalizeResponse($options, $path);
+        return $this->normalizeResponse($options, $object);
     }
     /**
      * Write a new file using a stream.
@@ -84,15 +83,8 @@ class AliyunOssAdapter extends AbstractAdapter
      */
     public function writeStream($path, $resource, Config $config)
     {
-        $contents = '';
-        while (!feof($resource)) {
-            $contents .= fread($resource, 1024);
-        }
-        $response = $this->write($path, $contents, $config);
-        if ($response === false) {
-            return $response;
-        }
-        return compact('path');
+        $contents = stream_get_contents($resource);
+        return $this->write($path, $contents, $config);
     }
     /**
      * Update a file.
@@ -132,7 +124,7 @@ class AliyunOssAdapter extends AbstractAdapter
      */
     public function rename($path, $newpath)
     {
-        if (! $this->copy($path, $newpath)){
+        if (!$this->copy($path, $newpath)) {
             return false;
         }
         return $this->delete($path);
@@ -149,7 +141,7 @@ class AliyunOssAdapter extends AbstractAdapter
     {
         $object = $this->applyPathPrefix($path);
         $newObject = $this->applyPathPrefix($newpath);
-        try{
+        try {
             $this->getClient()->copyObject($this->bucket, $object, $this->bucket, $newObject);
         } catch (OssException $e) {
             return false;
@@ -166,9 +158,9 @@ class AliyunOssAdapter extends AbstractAdapter
     public function delete($path)
     {
         $object = $this->applyPathPrefix($path);
-        try{
+        try {
             $this->getClient()->deleteObject($this->bucket, $object);
-        }catch (OssException $e) {
+        } catch (OssException $e) {
             return false;
         }
         return ! $this->has($path);
@@ -387,6 +379,14 @@ class AliyunOssAdapter extends AbstractAdapter
         );
     }
     /**
+     * @param string $path
+     * @return string
+     */
+    public function getUrl($path)
+    {
+        return $this->domain.$path;
+    }
+    /**
      * Retrieve options from a Config instance. done
      *
      * @param Config $config
@@ -417,6 +417,7 @@ class AliyunOssAdapter extends AbstractAdapter
         return [
             'type' => 'file',
             'path' => $path,
+            'url' => $this->domain.$path,
             'mimetype' => $object[OssClient::OSS_CONTENT_TYPE],
             'size' => $object[OssClient::OSS_LENGTH],
         ];
